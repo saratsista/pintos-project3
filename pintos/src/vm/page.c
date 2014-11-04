@@ -1,4 +1,3 @@
-#include <hash.h>
 #include "threads/malloc.h"
 #include "page.h"
 
@@ -48,8 +47,25 @@ add_to_spt (struct file *file, uint8_t *upage, bool writable,
   return true;
 }
 
-void free_spt_entry (struct hash_elem *h)
+void free_spt_entry (void *vaddr)
 {
-  hash_delete (&thread_current ()->sup_page_table, h); 
+  struct sup_page_entry spte;
+  struct hash_elem *h;
+
+  spte.vaddr = vaddr;
+  h = hash_delete (&thread_current ()->sup_page_table, &spte.elem); 
+  ASSERT (h != NULL);
+  free (hash_entry (h, struct sup_page_entry, elem));
 }
 
+struct sup_page_entry *
+lookup_sup_page (void *vaddr)
+{
+  struct sup_page_entry spte;
+  struct hash_elem *h;
+  struct thread *cur = thread_current ();
+
+  spte.vaddr = vaddr;
+  h = hash_find (&cur->sup_page_table, &spte.elem);
+  return (h == NULL? NULL: hash_entry (h, struct sup_page_entry, elem));
+}

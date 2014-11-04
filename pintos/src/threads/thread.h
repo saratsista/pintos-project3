@@ -104,6 +104,8 @@ struct thread
     struct file *fd[MAX_FD];		
     struct list child_meta_list;
     struct child_metadata *md;
+#endif
+#ifdef VM
     struct hash sup_page_table;		/* Supplementary Page Table */
 #endif
 

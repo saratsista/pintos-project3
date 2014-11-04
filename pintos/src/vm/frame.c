@@ -1,4 +1,3 @@
-#include <hash.h>
 #include "frame.h"
 #include "threads/palloc.h"
 
@@ -26,7 +25,7 @@ frame_less_func (const struct hash_elem *a, const struct hash_elem *b,
 bool
 init_frame_table ()
 {
-  return  hash_init (&frame_table, frame_table_hash, frame_less_func, NULL);
+  return  hash_init (&frame_table, &frame_table_hash, &frame_less_func, NULL);
 }
 
 static bool
@@ -74,10 +73,25 @@ allocate_page_frame (struct sup_page_entry *spte)
 void 
 free_page_frame (void *vaddr)
 {
+  struct frame_table_entry fte;
   struct hash_elem *h;
-  h = hash_delete (&frame_table, vaddr); 
+  
+  fte.vaddr = vaddr;
+  h = hash_delete (&frame_table, &fte.elem); 
   ASSERT (h != NULL);
   palloc_free_page (vaddr);
+}
+
+struct frame_table_entry *
+lookup_page_frame (void *vaddr)
+{
+  struct frame_table_entry fte;
+  struct hash_elem *h;
+
+  fte.vaddr = vaddr;
+  h = hash_find (&frame_table, &fte.elem);
+  return (h == NULL ? NULL : hash_entry (h, struct frame_table_entry, elem));
+} 
 }
 
 static bool
@@ -88,3 +102,5 @@ install_page_frame (void *uaddr, void *frame, bool writable)
   return (pagedir_get_page (t->pagedir, uaddr) == NULL
 	  && pagedir_set_page (uaddr, frame, writable));
 }
+
+

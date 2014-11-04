@@ -31,3 +31,6 @@ bool allocate_page_frame (struct sup_page_entry *);
 
 /* Free a page frame VADDR from the frame table */
 void free_page_frame (void *vaddr);
+
+/*Function to lookup a page frame with VAADR as its key */
+struct frame_table_entry *lookup_page_frame (void *vaddr);

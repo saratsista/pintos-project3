@@ -40,3 +40,4 @@ hash_hash_func sup_page_hash;
 hash_less_func sup_page_less;
 bool add_to_spt (struct file *, uint8_t *, bool, size_t, size_t);
 void free_spt_entry (struct hash_elem *h);
+struct sup_page_entry *lookup_sup_page (void *vaddr);
