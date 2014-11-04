@@ -29,19 +29,62 @@ init_frame_table ()
   return  hash_init (&frame_table, frame_table_hash, frame_less_func, NULL);
 }
 
-void *
-allocate_page_frame (void *vaddr)
+static bool
+install_page_frame (void *uaddr, void *frame, bool writable);
+
+bool
+allocate_page_frame (struct sup_page_entry *spte)
 {
+  struct frame_table_entry fte;
+
+  /* Get a page of memory from user_pool */
   void *frame =  palloc_get_page (PAL_USER);
+
   if (frame)
   {
-    struct frame_table_entry fte;
-    fte.vaddr = vaddr;
+    fte.vaddr = spte->vaddr;
     fte.kvaddr = frame; 
+    fte.spte = spte;
+    spte->kvaddr = frame;
     hash_insert (&frame_table, &fte.elem);
+     
+    /* Load this page */   
+    if (file_read (spte->file, frame, spte->read_bytes) 
+		!= (int)spte->read_bytes)
+    {
+      free_page_frame (spte->vaddr);
+      return false;
+    }
+    memset (frame + spte->read_bytes, 0, spte->zero_bytes);
+
+   /* Add the page to process' address space */
+    if (!install_page_frame (fte.vaddr, fte.kvaddr, spte->writable))
+    {
+      free_page_frame (spte->vaddr);
+      return false;
+    }
   }
   else
   {
     PANIC ("Cannot allocate frame from user pool");
   }
+  return true;
+}
+
+void 
+free_page_frame (void *vaddr)
+{
+  struct hash_elem *h;
+  h = hash_delete (&frame_table, vaddr); 
+  ASSERT (h != NULL);
+  palloc_free_page (vaddr);
+}
+
+static bool
+install_page_frame (void *uaddr, void *frame, bool writable)
+{
+  struct thread *t = thread_current ();
+  
+  return (pagedir_get_page (t->pagedir, uaddr) == NULL
+	  && pagedir_set_page (uaddr, frame, writable));
 }

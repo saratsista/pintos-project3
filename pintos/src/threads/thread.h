@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <hash.h>
 #include <stdint.h>
 #include "filesys/file.h"
 #include "threads/synch.h"
@@ -103,6 +104,7 @@ struct thread
     struct file *fd[MAX_FD];		
     struct list child_meta_list;
     struct child_metadata *md;
+    struct hash sup_page_table;		/* Supplementary Page Table */
 #endif
 
     /* Owned by thread.c. */

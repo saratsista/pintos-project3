@@ -6,7 +6,7 @@
    present. */
 enum data_location
   {
-    ON_FRAME,
+    ON_FILE,
     ON_SWAP,
     ON_DISK
   };
@@ -19,11 +19,12 @@ struct sup_page_entry
   enum data_location location;	// Location where data is present
   void *vaddr;			// User virtual address for the faulted page
   void *kvaddr;			// kernel virtual address for VADDR
-  struct frame_table_entry *fte;// A frame_table_entry for this page
   struct file *file;		// The executable file
-  uint32_t file_page;		// which page of the executable? 
+  bool writable;		// Is the page writable?
+  size_t read_bytes;
+  size_t zero_bytes;
   struct list alias_frames;     // Other frames that map to same page frame
-  struct hash_elem hash_elem;  
+  struct hash_elem elem;  
   /*
   1. Info for eviction policy
   2. Mapping from swap pages to disk
@@ -31,10 +32,11 @@ struct sup_page_entry
   4. Where to find the exec and which page to load?
   5. How to get the swap disk and which sector of swap disk? 
   6. The list of alias_frames can be avoided. See pintos docs.
+  7. Pointer to frame_table_entry?
  */
-}
+};
 
 hash_hash_func sup_page_hash;
 hash_less_func sup_page_less;
-void *add_to_spt (void *vaddr);
-void free_spt_entry (void *vaddr);
+bool add_to_spt (struct file *, uint8_t *, bool, size_t, size_t);
+void free_spt_entry (struct hash_elem *h);
