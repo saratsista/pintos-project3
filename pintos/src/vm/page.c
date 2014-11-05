@@ -1,5 +1,7 @@
 #include <string.h>
+#include "filesys/file.h"
 #include "threads/malloc.h"
+#include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "page.h"
 
@@ -39,12 +41,14 @@ add_to_spt (struct file *file, off_t off, uint8_t *upage, bool writable,
   spte->vaddr = upage;
   spte->kvaddr = NULL;
   spte->file = file;
+  spte->inode = file_get_inode (file); 
   spte->file_off = off;
   spte->writable = writable;
   spte->read_bytes = page_read_bytes; 
   spte->zero_bytes = page_zero_bytes;
   
   h = hash_insert (&thread_current ()->sup_page_table, &spte->elem);
+
   if ( h != NULL)
     return false;
   return true;
@@ -64,24 +68,11 @@ void free_spt_entry (void *vaddr)
 struct sup_page_entry *
 lookup_sup_page (void *vaddr)
 {
-  struct sup_page_entry *spte, *min_spte = NULL;
-  struct hash_iterator i;
-  void *min_vaddr = vaddr;
+  struct sup_page_entry spte; 
+  struct hash_elem *h;
   struct thread *cur = thread_current ();
 
-//  spte.vaddr = vaddr;
-  hash_first (&i, &cur->sup_page_table);
-
-  while (hash_next (&i))
-  {
-    spte = hash_entry (hash_cur (&i), struct sup_page_entry, elem);
-    if (spte->vaddr < min_vaddr)
-    {
-      min_vaddr = spte->vaddr;
-      min_spte =  spte;
-    }
-  }
-//  h = hash_find (&cur->sup_page_table, &spte.elem);
-// return (h == NULL? NULL: hash_entry (h, struct sup_page_entry, elem));
-  return min_spte;
+  spte.vaddr = pg_round_down (vaddr);
+  h = hash_find (&cur->sup_page_table, &spte.elem);
+  return (h == NULL? NULL: hash_entry (h, struct sup_page_entry, elem));
 }

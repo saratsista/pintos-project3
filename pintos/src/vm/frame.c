@@ -2,6 +2,9 @@
 #include "frame.h"
 #include "page.h"
 #include "threads/palloc.h"
+#include "threads/synch.h"
+#include "threads/malloc.h"
+#include "userprog/syscall.h"
 #include "userprog/pagedir.h"
 
 unsigned
@@ -37,33 +40,41 @@ install_page_frame (void *uaddr, void *frame, bool writable);
 bool
 allocate_page_frame (struct sup_page_entry *spte)
 {
-  struct frame_table_entry fte;
+  struct frame_table_entry *fte = malloc (sizeof (struct frame_table_entry));
 
   /* Get a page of memory from user_pool */
   void *frame =  palloc_get_page (PAL_USER);
 
   if (frame)
   {
-    fte.vaddr = spte->vaddr;
-    fte.kvaddr = frame; 
-    fte.spte = spte;
-    spte->kvaddr = frame;
-    hash_insert (&frame_table, &fte.elem);
+    fte->vaddr = spte->vaddr;
+    fte->kvaddr = frame; 
+    fte->spte = spte;
+    hash_insert (&frame_table, &fte->elem);
 
-    int r = 0;
+    spte->kvaddr = frame;
     /* Load this page */   
-    if ((r = file_read (spte->file, frame, spte->read_bytes)) 
+    lock_acquire (&filesys_lock);
+    spte->file = file_open (spte->inode);
+    if ( file_read_at (spte->file, frame, spte->read_bytes, spte->file_off) 
 		!= (int)spte->read_bytes)
     {
-      printf ("file_read failed = %d\n", r);
+      printf ("file_read failed\n");
+      free_page_frame (fte->kvaddr);
+      free (fte);
+      lock_release (&filesys_lock);
       return false;
     }
+    lock_release (&filesys_lock);
+
     memset (frame + spte->read_bytes, 0, spte->zero_bytes);
 
    /* Add the page to process' address space */
     if (!install_page_frame (spte->vaddr, frame, spte->writable))
     {
-     // printf ("Install page frame failed\n");
+      printf ("Install page frame failed\n");
+      free_page_frame (fte->kvaddr);
+      free (fte);
       return false;
     }
   return true;

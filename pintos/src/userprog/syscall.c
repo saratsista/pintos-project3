@@ -19,8 +19,6 @@
 
 #define MAX_ARGS 3
 
-struct lock filesys_lock;
-
 static void syscall_handler (struct intr_frame *);
 void validate_pointer (void *ptr);
 void get_arguments (int *esp, int *args, int count);
@@ -28,6 +26,7 @@ void get_arguments (int *esp, int *args, int count);
 void
 syscall_init (void) 
 {
+  lock_init (&filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -35,7 +34,6 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   int args[MAX_ARGS];
-  lock_init (&filesys_lock);
   validate_pointer (f->esp);
   int *sp = (int *)f->esp;
   struct thread *cur = thread_current ();
@@ -131,6 +129,8 @@ get_arguments (int *esp, int *args, int count)
 void
 validate_pointer (void *ptr)
 {
+  if (ptr < USER_VADDR_START)
+    exit (-1);
   if (!is_user_vaddr (ptr)) 
     exit (-1);
   if  ((pagedir_get_page (thread_current ()->pagedir, ptr) == NULL))

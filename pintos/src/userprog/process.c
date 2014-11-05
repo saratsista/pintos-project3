@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -112,14 +113,13 @@ start_process (void *file_name_)
   if (!success)
   {
     cur->md->load_success = false; 
-    sema_up (&(cur->md->child_load));
     thread_exit ();
   }
   else
   {
     cur->md->load_success = true;
-    sema_up (&(cur->md->child_load));
   }
+    sema_up (&(cur->md->child_load));
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -146,7 +146,8 @@ process_wait (tid_t child_tid)
   int exit_status = -1;
   struct list_elem *e;
   struct child_metadata *md;
-  struct list *clist = &(thread_current ()->child_meta_list);
+  struct thread *cur = thread_current ();
+  struct list *clist = &(cur->child_meta_list);
 
   for (e = list_begin (clist); e != list_end (clist);
        e = list_next (e))
@@ -171,7 +172,26 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  struct list *clist = &(cur->child_meta_list);
+  struct list_elem *e;
+  struct child_metadata *md;
 
+  /* close the files opened by the process */
+  lock_acquire (&filesys_lock);
+  int k = 0;
+  for (k = 0; k < MAX_FD; k++)
+     if (cur->fd[k] != NULL)
+       file_close (cur->fd[k]);
+  lock_release (&filesys_lock);
+
+  /* Free the child_meta_list */
+  while (!list_empty (clist))
+  {
+    e = list_pop_front (clist);
+    md = list_entry (e, struct child_metadata, infoelem);
+    free (md);
+   }
+   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

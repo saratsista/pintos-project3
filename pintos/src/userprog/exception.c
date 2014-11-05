@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "userprog/gdt.h"
+#include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "vm/frame.h"
@@ -166,7 +167,7 @@ page_fault (struct intr_frame *f)
   bool success = true;
   struct frame_table_entry *fte;
   struct sup_page_entry *spte = lookup_sup_page (fault_addr);  
-  /* If cannot find page in the page table, fail */
+  /* If cannot find page in the page table, fail */ 
   if (spte == NULL)
   {
     success = false;
@@ -179,7 +180,8 @@ page_fault (struct intr_frame *f)
     goto done;
   }
   /* Else, check where the data is present */
-  if (spte->location == ON_FILE)
+  if (not_present //&& fault_addr >= USER_VADDR_START
+      && spte->location == ON_FILE)
   {
     success = allocate_page_frame (spte);
     if (!success)
