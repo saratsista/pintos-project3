@@ -1,3 +1,6 @@
+#ifndef VM_PAGE_H
+#define VM_PAGE_H
+
 #include <hash.h>
 #include <list.h>
 #include "frame.h"
@@ -20,6 +23,7 @@ struct sup_page_entry
   void *vaddr;			// User virtual address for the faulted page
   void *kvaddr;			// kernel virtual address for VADDR
   struct file *file;		// The executable file
+  off_t file_off;		// The offset in the executable
   bool writable;		// Is the page writable?
   size_t read_bytes;
   size_t zero_bytes;
@@ -38,6 +42,8 @@ struct sup_page_entry
 
 hash_hash_func sup_page_hash;
 hash_less_func sup_page_less;
-bool add_to_spt (struct file *, uint8_t *, bool, size_t, size_t);
-void free_spt_entry (struct hash_elem *h);
+bool add_to_spt (struct file *, off_t, uint8_t *, bool, size_t, size_t);
+void free_spt_entry (void *);
 struct sup_page_entry *lookup_sup_page (void *vaddr);
+
+#endif /* vm/page.h */

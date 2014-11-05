@@ -166,11 +166,19 @@ page_fault (struct intr_frame *f)
   bool success = true;
   struct frame_table_entry *fte;
   struct sup_page_entry *spte = lookup_sup_page (fault_addr);  
-  if (spte == NULL || !spte->writable)
+  /* If cannot find page in the page table, fail */
+  if (spte == NULL)
   {
     success = false;
     goto done;
   }
+  /* If trying to write to a read-only page, fail */
+  if (!spte->writable && write)
+  {
+    success = false;
+    goto done;
+  }
+  /* Else, check where the data is present */
   if (spte->location == ON_FILE)
   {
     success = allocate_page_frame (spte);

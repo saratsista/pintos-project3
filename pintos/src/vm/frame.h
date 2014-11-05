@@ -1,3 +1,6 @@
+#ifndef VM_FRAME_H
+#define VM_FRAME_H
+
 #include <hash.h>
 #include <list.h>
 #include "threads/thread.h"
@@ -34,3 +37,5 @@ void free_page_frame (void *vaddr);
 
 /*Function to lookup a page frame with VAADR as its key */
 struct frame_table_entry *lookup_page_frame (void *vaddr);
+
+#endif /* vm/frame.h */

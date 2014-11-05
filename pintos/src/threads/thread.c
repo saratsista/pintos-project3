@@ -194,7 +194,7 @@ thread_create (const char *name, int priority,
     t->fd[i] = NULL;
 #endif
 #ifdef VM
-  hash_init (&t->sup_page_table, &sup_page_hash, &sup_page_less, NULL);
+  hash_init (&t->sup_page_table, sup_page_hash, sup_page_less, NULL);
   init_frame_table ();
 #endif
   /* Stack frame for kernel_thread(). */
