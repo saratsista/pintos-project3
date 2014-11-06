@@ -28,7 +28,7 @@ sup_page_less (const struct hash_elem *a, const struct hash_elem *b,
 }
 
 bool
-add_to_spt (struct file *file, off_t off, uint8_t *upage, bool writable,
+add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
 		  size_t page_read_bytes, size_t page_zero_bytes)
 {
   struct sup_page_entry *spte = malloc (sizeof (struct sup_page_entry));
@@ -46,6 +46,7 @@ add_to_spt (struct file *file, off_t off, uint8_t *upage, bool writable,
   spte->writable = writable;
   spte->read_bytes = page_read_bytes; 
   spte->zero_bytes = page_zero_bytes;
+  spte->is_loaded = false;
   
   h = hash_insert (&thread_current ()->sup_page_table, &spte->elem);
 

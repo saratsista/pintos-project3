@@ -56,11 +56,10 @@ allocate_page_frame (struct sup_page_entry *spte)
     /* Load this page */   
     lock_acquire (&filesys_lock);
     spte->file = file_open (spte->inode);
-    if ( file_read_at (spte->file, frame, spte->read_bytes, spte->file_off) 
+    if (file_read_at (spte->file, frame, spte->read_bytes, spte->file_off) 
 		!= (int)spte->read_bytes)
     {
-      printf ("file_read failed\n");
-      free_page_frame (fte->kvaddr);
+      free_page_frame (frame);
       free (fte);
       lock_release (&filesys_lock);
       return false;
@@ -72,17 +71,17 @@ allocate_page_frame (struct sup_page_entry *spte)
    /* Add the page to process' address space */
     if (!install_page_frame (spte->vaddr, frame, spte->writable))
     {
-      printf ("Install page frame failed\n");
-      free_page_frame (fte->kvaddr);
+      free_page_frame (frame);
       free (fte);
       return false;
     }
-  return true;
+    spte->is_loaded = true;
   }
   else
   {
     PANIC ("Cannot allocate frame from user pool");
   }
+  return true;
 }
 
 void 

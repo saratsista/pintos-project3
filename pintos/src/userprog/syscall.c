@@ -61,8 +61,7 @@ syscall_handler (struct intr_frame *f)
     
    case SYS_WRITE:
       get_arguments (sp, &args[0], 3);
-      args[1] = (int)pagedir_get_page (cur->pagedir, (const void *)args[1]);
-      f->eax = write ((int)args[0], (void *)args[1], (unsigned)args[2]);
+      f->eax = write (args[0], (void *)args[1], (unsigned)args[2]);
       break;
     
    case SYS_READ:

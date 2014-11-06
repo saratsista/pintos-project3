@@ -25,11 +25,11 @@ struct sup_page_entry
   void *kvaddr;			// kernel virtual address for VADDR
   struct file *file;		// The executable file
   struct inode *inode;
-  off_t file_off;		// The offset in the executable
+  uint32_t file_off;		// The offset in the executable
   bool writable;		// Is the page writable?
   size_t read_bytes;
   size_t zero_bytes;
-  struct list alias_frames;     // Other frames that map to same page frame
+  bool is_loaded;
   struct hash_elem elem;  
   /*
   1. Info for eviction policy
@@ -44,7 +44,7 @@ struct sup_page_entry
 
 hash_hash_func sup_page_hash;
 hash_less_func sup_page_less;
-bool add_to_spt (struct file *, off_t, uint8_t *, bool, size_t, size_t);
+bool add_to_spt (struct file *, uint32_t, uint8_t *, bool, size_t, size_t);
 void free_spt_entry (void *);
 struct sup_page_entry *lookup_sup_page (void *vaddr);
 

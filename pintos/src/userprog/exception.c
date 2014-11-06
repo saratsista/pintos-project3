@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include "userprog/gdt.h"
 #include "userprog/syscall.h"
+#include "userprog/pagedir.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "vm/frame.h"
 #include "vm/page.h"
 
@@ -152,42 +154,28 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-/*
-  * To implement virtual memory, delete the rest of the function
-     body, and replace it with code that brings in the page to
-     which fault_addr refers. 
-
-  printf ("Page fault at %p: %s error %s page in %s context.\n",
-          fault_addr,
-          not_present ? "not present" : "rights violation",
-          write ? "writing" : "reading",
-          user ? "user" : "kernel");
-  kill (f);
-*/
   bool success = true;
-  struct frame_table_entry *fte;
-  struct sup_page_entry *spte = lookup_sup_page (fault_addr);  
-  /* If cannot find page in the page table, fail */ 
-  if (spte == NULL)
-  {
-    success = false;
-    goto done;
-  }
-  /* If trying to write to a read-only page, fail */
-  if (!spte->writable && write)
-  {
-    success = false;
-    goto done;
-  }
-  /* Else, check where the data is present */
-  if (not_present //&& fault_addr >= USER_VADDR_START
-      && spte->location == ON_FILE)
-  {
-    success = allocate_page_frame (spte);
-    if (!success)
-      goto done;
-  }
 
+//  printf (">>> fault_addr = %p\n", fault_addr); 
+  if (not_present && is_user_vaddr (fault_addr) &&
+      fault_addr > USER_VADDR_START)
+   {
+      struct sup_page_entry *spte = lookup_sup_page (fault_addr);
+      if (!spte)
+       {
+	    success = false;
+            goto done;
+        }
+       else if (spte->is_loaded)
+	  goto done;
+       else if (!spte->writable && write)
+	{
+	  success = false;
+	  goto done;
+	}
+       else
+	  success = allocate_page_frame (spte);  
+    }
   done:
     if (success == false) 
     {
@@ -196,7 +184,7 @@ page_fault (struct intr_frame *f)
               not_present ? "not present" : "rights violation",
               write ? "writing" : "reading",
               user ? "user" : "kernel");
-      kill (f);
+     kill (f);
     }
 }
 
