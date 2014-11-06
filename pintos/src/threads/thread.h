@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "filesys/file.h"
 #include "threads/synch.h"
+#include "threads/vaddr.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -29,6 +30,8 @@ typedef int tid_t;
 
 /* Maximum file descriptors for a process */
 #define MAX_FD 128
+/* Initial stack size */
+#define DEFAULT_STACK_BOTTOM ((uint8_t *)PHYS_BASE - PGSIZE)
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -107,6 +110,7 @@ struct thread
 #endif
 #ifdef VM
     struct hash sup_page_table;		/* Supplementary Page Table */
+    void *stack_bottom;			/* current stack bottom */
 #endif
 
     /* Owned by thread.c. */

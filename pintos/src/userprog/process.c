@@ -481,7 +481,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
-//  uint32_t offset = (uint32_t)ofs;
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {

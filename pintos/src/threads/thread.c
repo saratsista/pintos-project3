@@ -9,8 +9,6 @@
 #include "threads/intr-stubs.h"
 #include "threads/palloc.h"
 #include "threads/switch.h"
-#include "threads/synch.h"
-#include "threads/vaddr.h"
 #include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -196,6 +194,7 @@ thread_create (const char *name, int priority,
 #ifdef VM
   hash_init (&t->sup_page_table, sup_page_hash, sup_page_less, NULL);
   init_frame_table ();
+  t->stack_bottom = DEFAULT_STACK_BOTTOM;
 #endif
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);

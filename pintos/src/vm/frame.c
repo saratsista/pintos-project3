@@ -54,17 +54,14 @@ allocate_page_frame (struct sup_page_entry *spte)
 
     spte->kvaddr = frame;
     /* Load this page */   
-    lock_acquire (&filesys_lock);
     spte->file = file_open (spte->inode);
     if (file_read_at (spte->file, frame, spte->read_bytes, spte->file_off) 
 		!= (int)spte->read_bytes)
     {
       free_page_frame (frame);
       free (fte);
-      lock_release (&filesys_lock);
       return false;
     }
-    lock_release (&filesys_lock);
 
     memset (frame + spte->read_bytes, 0, spte->zero_bytes);
 

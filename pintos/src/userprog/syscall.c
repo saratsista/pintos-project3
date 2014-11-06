@@ -132,8 +132,6 @@ validate_pointer (void *ptr)
     exit (-1);
   if (!is_user_vaddr (ptr)) 
     exit (-1);
-  if  ((pagedir_get_page (thread_current ()->pagedir, ptr) == NULL))
-    exit (-1);
 }
 
 void
@@ -143,8 +141,14 @@ exit (int status)
     If the current thread exits, then it should be removed from its
     parent's child list. */
   struct thread *cur = thread_current ();
-  cur->md->exit_status = status;
+
+  /* set exit_status in struct child_metadata */
+  cur->md->exit_status = status;  
+  /* Release locks and semaphores */
   sema_up (&cur->md->completed);
+  if (lock_held_by_current_thread (&filesys_lock))
+    lock_release (&filesys_lock); 
+   
   printf ("%s: exit(%d)\n", cur->name, status);
   thread_exit ();
 }

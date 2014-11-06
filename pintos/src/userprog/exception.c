@@ -155,6 +155,7 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
   bool success = true;
+  struct thread *cur = thread_current ();
 
 //  printf (">>> fault_addr = %p\n", fault_addr); 
   if (not_present && is_user_vaddr (fault_addr) &&
@@ -163,19 +164,32 @@ page_fault (struct intr_frame *f)
       struct sup_page_entry *spte = lookup_sup_page (fault_addr);
       if (!spte)
        {
-	    success = false;
-            goto done;
-        }
-       else if (spte->is_loaded)
+	  /* Illegal stack access? exit with -1*/
+	  if (cur->stack_bottom > fault_addr)
+              exit (-1);
+          /* else invalid access */
+	  success = false;
+          goto done;
+       }
+       else if (spte->is_loaded) 
+        {
+     	  /* Is page frame already loaded? */
 	  goto done;
+        }
        else if (!spte->writable && write)
 	{
+          /* Write to a read-only page? */
 	  success = false;
 	  goto done;
 	}
        else
 	  success = allocate_page_frame (spte);  
-    }
+   }
+  else
+  {
+    /* Invalid read. Kill the thread */
+    exit (-1);
+  }
   done:
     if (success == false) 
     {
