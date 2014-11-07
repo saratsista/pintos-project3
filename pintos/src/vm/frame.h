@@ -9,7 +9,8 @@
    is common for all processes.*/
 struct hash frame_table;
 
-/* Structure for each entry in the Frame Table */
+/* Structure for each entry in the Frame Table
+   The key is the kernel virtual address KVADDR */
 struct frame_table_entry
 {
   void *vaddr;		  /* User virtual address */
@@ -30,12 +31,15 @@ hash_less_func frame_less_func;
 
 /* Allocate a page frame for VADDR and install the
    mapping in the frame_table */
-bool allocate_page_frame (struct sup_page_entry *);
+void *allocate_page_frame (struct sup_page_entry *);
+
+bool
+install_page_frame (void *uaddr, void *frame, bool writable);
 
 /* Free a page frame VADDR from the frame table */
 void free_page_frame (void *vaddr);
 
 /*Function to lookup a page frame with VAADR as its key */
-struct frame_table_entry *lookup_page_frame (void *vaddr);
+struct frame_table_entry *lookup_page_frame (void *kpage);
 
 #endif /* vm/frame.h */

@@ -11,11 +11,15 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
+#define STACK_LIMIT 8*1024*1024
+#define MAX_STACK_ADDR (PHYS_BASE - STACK_LIMIT)
+
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
+static bool grow_stack (void *fault_addr);
 
 /* Registers handlers for interrupts that can be caused by user
    programs.
@@ -165,11 +169,18 @@ page_fault (struct intr_frame *f)
       if (!spte)
        {
 	  /* Illegal stack access? exit with -1*/
-	  if (cur->stack_bottom > fault_addr)
-              exit (-1);
-          /* else invalid access */
-	  success = false;
-          goto done;
+	  if (fault_addr < MAX_STACK_ADDR)
+		exit (-1);
+          else if (f->esp - fault_addr >= PGSIZE)
+		  // && fault_addr > cur->stack_bottom)
+		exit (-1);
+	  else 
+	   {
+	     /* Else, grow stack */		
+  	     if (grow_stack (fault_addr))
+               goto done;
+	   }
+	   exit (-1);
        }
        else if (spte->is_loaded) 
         {
@@ -188,7 +199,7 @@ page_fault (struct intr_frame *f)
   else
   {
     /* Invalid read. Kill the thread */
-    exit (-1);
+    success = false;
   }
   done:
     if (success == false) 
@@ -202,3 +213,16 @@ page_fault (struct intr_frame *f)
     }
 }
 
+bool
+grow_stack (void *fault_addr)
+{
+  struct thread *cur = thread_current ();
+  void *stack_page = allocate_page_frame (NULL);
+  if (stack_page != NULL) 
+  {
+    if (!install_page_frame (pg_round_down(fault_addr), stack_page, true))
+         return false;
+    cur->stack_bottom -= PGSIZE;
+  }
+  return true;
+}
