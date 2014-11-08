@@ -27,6 +27,26 @@ sup_page_less (const struct hash_elem *a, const struct hash_elem *b,
   return spte1->vaddr < spte2->vaddr;
 }
 
+/* Function which deletes and frees each element in the hash table */
+void
+sup_page_action (struct hash_elem *h, void *aux UNUSED)
+{
+  struct frame_table_entry *fte;
+  struct sup_page_entry *spte =
+			hash_entry (h, struct sup_page_entry, elem);
+  if (spte->is_loaded)
+   {
+     fte = lookup_page_frame (spte->kvaddr);
+     if (fte)
+     {
+       free_page_frame (fte->kvaddr);
+       free (fte);
+     }
+     pagedir_clear_page (thread_current ()->pagedir, spte->vaddr);
+   }
+   free (spte);    
+}
+
 bool
 add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
 		  size_t page_read_bytes, size_t page_zero_bytes)
@@ -55,6 +75,7 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   return true;
 }
 
+/* Deletes an element form sup_page_table */
 void free_spt_entry (void *vaddr)
 {
   struct sup_page_entry spte;
@@ -66,6 +87,7 @@ void free_spt_entry (void *vaddr)
   free (hash_entry (h, struct sup_page_entry, elem));
 }
 
+/* Lookup an element in sup_page_table with key VADDR */
 struct sup_page_entry *
 lookup_sup_page (void *vaddr)
 {
@@ -77,3 +99,13 @@ lookup_sup_page (void *vaddr)
   h = hash_find (&cur->sup_page_table, &spte.elem);
   return (h == NULL? NULL: hash_entry (h, struct sup_page_entry, elem));
 }
+
+/* Destroy the sup_page_table */
+void
+spt_destroy (struct hash *spt)
+{
+  hash_clear (spt, sup_page_action);
+}
+
+
+

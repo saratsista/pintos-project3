@@ -31,7 +31,8 @@ frame_less_func (const struct hash_elem *a, const struct hash_elem *b,
 bool
 init_frame_table ()
 {
-  return  hash_init (&frame_table, frame_table_hash, frame_less_func, NULL);
+  lock_init (&ft_lock);
+  return hash_init (&frame_table, frame_table_hash, frame_less_func, NULL);
 }
 
 static bool
@@ -44,7 +45,7 @@ allocate_page_frame (struct sup_page_entry *spte)
 
   /* Get a page of memory from user_pool */
   void *frame =  palloc_get_page (PAL_USER | PAL_ZERO);
-
+  lock_acquire (&ft_lock);
   if (frame)
   {
     fte->kvaddr = frame; 
@@ -54,6 +55,7 @@ allocate_page_frame (struct sup_page_entry *spte)
     if (spte && spte->location == ON_FILE)
       {
     	fte->vaddr = spte->vaddr;
+        spte->kvaddr = frame;
 	if (!load_from_file (spte, fte->kvaddr))
           {
             free_page_frame (frame);
@@ -66,17 +68,20 @@ allocate_page_frame (struct sup_page_entry *spte)
    {
       PANIC ("Cannot allocate frame from user pool");
    }
+  lock_release (&ft_lock);
   return frame;
 }
 
 void 
-free_page_frame (void *vaddr)
+free_page_frame (void *kvaddr)
 {
   struct frame_table_entry fte;
   
-  fte.vaddr = vaddr;
+  lock_acquire (&ft_lock);
+  fte.kvaddr = kvaddr;
   hash_delete (&frame_table, &fte.elem); 
-  palloc_free_page (vaddr);
+  palloc_free_page (kvaddr);
+  lock_release (&ft_lock);
 }
 
 struct frame_table_entry *

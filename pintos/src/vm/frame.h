@@ -4,10 +4,14 @@
 #include <hash.h>
 #include <list.h>
 #include "threads/thread.h"
+#include "threads/synch.h"
 
 /* Frame Table: Frame table is a global data structure and 
    is common for all processes.*/
 struct hash frame_table;
+
+/* Lock for the frame_table */
+struct lock ft_lock;
 
 /* Structure for each entry in the Frame Table
    The key is the kernel virtual address KVADDR */
@@ -36,8 +40,8 @@ void *allocate_page_frame (struct sup_page_entry *);
 bool
 install_page_frame (void *uaddr, void *frame, bool writable);
 
-/* Free a page frame VADDR from the frame table */
-void free_page_frame (void *vaddr);
+/* Free a page frame KVADDR from the frame table */
+void free_page_frame (void *kvaddr);
 
 /*Function to lookup a page frame with VAADR as its key */
 struct frame_table_entry *lookup_page_frame (void *kpage);

@@ -169,30 +169,28 @@ page_fault (struct intr_frame *f)
       if (!spte)
        {
 	  /* Illegal stack access? exit with -1*/
-	  if (fault_addr < MAX_STACK_ADDR)
-		exit (-1);
-          else if (f->esp - fault_addr >= PGSIZE)
-		  // && fault_addr > cur->stack_bottom)
-		exit (-1);
+	  if ((fault_addr < MAX_STACK_ADDR)
+              || (f->esp - fault_addr == PGSIZE))
+		   //&& fault_addr > cur->stack_bottom)
+	      {
+		success = false;
+	      }	
 	  else 
 	   {
 	     /* Else, grow stack */		
-  	     if (grow_stack (fault_addr))
-               goto done;
+  	     if (!grow_stack (fault_addr))
+               success = false;
 	   }
-	   exit (-1);
+	   goto done;
        }
        else if (spte->is_loaded) 
         {
      	  /* Is page frame already loaded? */
+          /* Write to a read-only page? */
+          if (!spte->writable && write)
+	     success = false;
 	  goto done;
         }
-       else if (!spte->writable && write)
-	{
-          /* Write to a read-only page? */
-	  success = false;
-	  goto done;
-	}
        else
 	  success = allocate_page_frame (spte);  
    }
@@ -204,12 +202,15 @@ page_fault (struct intr_frame *f)
   done:
     if (success == false) 
     {
+     /*
       printf ("Page fault at %p: %s error %s page in %s context.\n",
               fault_addr,
               not_present ? "not present" : "rights violation",
               write ? "writing" : "reading",
               user ? "user" : "kernel");
      kill (f);
+     */
+     exit (-1);
     }
 }
 
