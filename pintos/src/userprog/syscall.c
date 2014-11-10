@@ -13,6 +13,8 @@
 #include "userprog/pagedir.h"
 #include "userprog/syscall.h"
 #include "userprog/process.h"
+#include "vm/page.h"
+#include "vm/frame.h"
 #include <kernel/console.h>
 #include <filesys/filesys.h>
 #include <filesys/file.h>
@@ -22,6 +24,7 @@
 static void syscall_handler (struct intr_frame *);
 void validate_pointer (void *ptr);
 void get_arguments (int *esp, int *args, int count);
+static allocate_mapid (void);
 
 void
 syscall_init (void) 
@@ -329,12 +332,78 @@ wait (pid_t pid)
 mapid_t
 mmap (int fd, void *addr)
 {
-  if (fd < 2)
+  if (fd < 2 || addr == 0 || lookup_sup_page (addr) ||
+      (uint32_t)addr % PGSIZE != 0)
     exit (-1);
-  return 0;
+
+  struct sup_page_entry *spte;
+  struct thread *cur = thread_current ();
+  struct file *file = file_reopen (cur->fd[fd]);
+  uint32_t bytes_to_read = file_length (file);
+  if (bytes_to_read == 0)
+    exit (-1);
+  struct mmapped_page *mpage = calloc (1, sizeof (struct mmapped_page));
+  mapid_t map_id = allocate_mapid ();
+  uint32_t offset = 0;
+  int read_bytes = 0, zero_bytes = 0;
+  bool success = true;
+
+  while (offset < bytes_to_read)
+   {
+    read_bytes = (bytes_to_read < PGSIZE)? bytes_to_read : PGSIZE;
+    zero_bytes = PGSIZE - read_bytes;
+
+    spte = add_to_spt (file, offset, addr, true, read_bytes, zero_bytes);
+    if (!spte)
+     {
+       success = false;
+       break;
+     }	
+    mpage->spte = spte;
+    mpage->mapid = map_id;
+    list_push_back (&cur->mmapped_files, &mpage->map_elem);
+
+    bytes_to_read -= read_bytes;
+    offset += read_bytes;
+    addr += PGSIZE;
+   }
+
+  file_close (file);
+  if (success)
+    return map_id; 
+  else
+    return -1;
 }
 
 void
 munmap (mapid_t mapid)
 {
+  struct list *map_list = &thread_current ()->mmapped_files;
+  struct mmapped_page *mpage;
+  struct list_elem *e;
+
+    while (!list_empty (map_list))
+    {
+     e = list_begin (map_list);
+      mpage = list_entry (e, struct mmapped_page, map_elem);
+      if (mpage->mapid == mapid)
+       {
+        // sup_page_destroy (&mpage->spte->elem, NULL);
+         list_remove (e);
+         free (mpage);
+       }
+    }
+}
+
+static mapid_t
+allocate_mapid (void)
+{
+  static mapid_t next_mapid = 1;
+  mapid_t mapid;
+
+  lock_acquire (&mapid_lock);
+  mapid = next_mapid++;
+  lock_release (&mapid_lock);
+
+  return mapid;
 }

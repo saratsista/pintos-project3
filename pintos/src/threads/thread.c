@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include <user/syscall.h>
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -96,6 +97,9 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+#if VM
+  lock_init (&mapid_lock);
+#endif
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -196,7 +200,7 @@ thread_create (const char *name, int priority,
   init_frame_table ();
   t->stack_bottom = DEFAULT_STACK_BOTTOM;
   t->esp = NULL;
-  t->vmap = bitmap_create (BITMAP_SIZE);
+  list_init (&t->mmapped_files);
 #endif
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);

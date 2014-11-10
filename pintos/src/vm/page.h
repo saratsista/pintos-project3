@@ -3,6 +3,7 @@
 
 #include <hash.h>
 #include <list.h>
+#include <user/syscall.h>
 #include "filesys/inode.h"
 #include "frame.h"
 
@@ -35,19 +36,28 @@ struct sup_page_entry
   1. Info for eviction policy
   2. Mapping from swap pages to disk
   3. locations of memory mapped files
-  4. Where to find the exec and which page to load?
   5. How to get the swap disk and which sector of swap disk? 
   6. The list of alias_frames can be avoided. See pintos docs.
-  7. Pointer to frame_table_entry?
  */
 };
+
+/* A list for mmapped pages. This is a per-process DS */
+struct mmapped_page
+{
+  struct sup_page_entry *spte;	// The spt entry for the mapped page
+  mapid_t mapid;		// the mapid for this page. 
+  struct list_elem map_elem;
+};
+
+/* A lock for allocating mapid */
+struct lock mapid_lock;
 
 hash_hash_func sup_page_hash;
 hash_less_func sup_page_less;
 /* function which deletes each element in sup_page_table */
-hash_action_func sup_page_action;
+hash_action_func sup_page_destroy;
 
-bool add_to_spt (struct file *, uint32_t, uint8_t *, bool, size_t, size_t);
+struct sup_page_entry *add_to_spt (struct file *, uint32_t, uint8_t *, bool, size_t, size_t);
 struct sup_page_entry *lookup_sup_page (void *vaddr);
 void spt_destroy (struct hash *);
 

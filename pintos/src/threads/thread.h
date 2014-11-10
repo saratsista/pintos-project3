@@ -32,10 +32,7 @@ typedef int tid_t;
 #define MAX_FD 128
 /* Initial stack size */
 #define DEFAULT_STACK_BOTTOM ((uint8_t *)PHYS_BASE - PGSIZE)
-/* Number of bits required in the bitmap uaddr_map */
-#define BITMAP_SIZE 1024
-/* Number to divide the address by to get the bit index */
-#define BITMAP_FACTOR (PGSIZE * 1024)
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -117,8 +114,7 @@ struct thread
     void *stack_bottom;			/* current stack bottom */
     void *esp;				/* stack pointer at transition from
 					   user mode to kernel mode*/
-    struct bitmap *vmap;		/* Bitmap to keep track of mapped 
-					   pages in virtual address space*/
+    struct list mmapped_files;		/* list for all mmaped files */
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

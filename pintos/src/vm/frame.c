@@ -1,5 +1,4 @@
 #include <string.h>
-#include <bitmap.h>
 #include "frame.h"
 #include "page.h"
 #include "threads/palloc.h"
@@ -52,9 +51,6 @@ allocate_page_frame (struct sup_page_entry *spte)
     fte->kvaddr = frame; 
     fte->spte = spte;
     hash_insert (&frame_table, &fte->elem);
-    /* set bitmap */
-    size_t kbit = (uint32_t)frame/(BITMAP_FACTOR);
-    bitmap_mark (thread_current ()->vmap, kbit);
 
     if (spte && spte->location == ON_FILE)
       {
@@ -62,6 +58,7 @@ allocate_page_frame (struct sup_page_entry *spte)
         spte->kvaddr = frame;
 	if (!load_from_file (spte, fte->kvaddr))
           {
+            lock_release (&ft_lock);
             free_page_frame (frame);
             free (fte);
             return NULL;
@@ -70,6 +67,7 @@ allocate_page_frame (struct sup_page_entry *spte)
    }
   else
    {
+      lock_release (&ft_lock);
       PANIC ("Cannot allocate frame from user pool");
    }
   lock_release (&ft_lock);
@@ -85,8 +83,6 @@ free_page_frame (void *kvaddr)
   fte.kvaddr = kvaddr;
   hash_delete (&frame_table, &fte.elem); 
   palloc_free_page (kvaddr);
-  /* Reset bitmap */
-  bitmap_reset (thread_current ()->vmap, (uint32_t)kvaddr/BITMAP_FACTOR);
   lock_release (&ft_lock);
 }
 
