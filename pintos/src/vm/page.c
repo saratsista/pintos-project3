@@ -1,4 +1,5 @@
 #include <string.h>
+#include <bitmap.h>
 #include "filesys/file.h"
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
@@ -44,13 +45,16 @@ sup_page_action (struct hash_elem *h, void *aux UNUSED)
      }
      pagedir_clear_page (thread_current ()->pagedir, spte->vaddr);
    }
-   free (spte);    
+   /* Reset bitmap and then free */
+   bitmap_reset (thread_current ()->vmap, (uint32_t)spte->vaddr/BITMAP_FACTOR);
+   free (spte);
 }
 
 bool
 add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
 		  size_t page_read_bytes, size_t page_zero_bytes)
 {
+  struct thread *cur = thread_current ();
   struct sup_page_entry *spte = malloc (sizeof (struct sup_page_entry));
   struct hash_elem *h;
 
@@ -68,23 +72,14 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   spte->zero_bytes = page_zero_bytes;
   spte->is_loaded = false;
   
-  h = hash_insert (&thread_current ()->sup_page_table, &spte->elem);
+  h = hash_insert (&cur->sup_page_table, &spte->elem);
+
+  /* set the bitmap */
+  bitmap_mark (cur->vmap, (uint32_t)upage/BITMAP_FACTOR);
 
   if ( h != NULL)
     return false;
   return true;
-}
-
-/* Deletes an element form sup_page_table */
-void free_spt_entry (void *vaddr)
-{
-  struct sup_page_entry spte;
-  struct hash_elem *h;
-
-  spte.vaddr = vaddr;
-  h = hash_delete (&thread_current ()->sup_page_table, &spte.elem); 
-  ASSERT (h != NULL);
-  free (hash_entry (h, struct sup_page_entry, elem));
 }
 
 /* Lookup an element in sup_page_table with key VADDR */
@@ -104,7 +99,7 @@ lookup_sup_page (void *vaddr)
 void
 spt_destroy (struct hash *spt)
 {
-  hash_clear (spt, sup_page_action);
+  hash_destroy (spt, sup_page_action);
 }
 
 

@@ -48,7 +48,6 @@ hash_less_func sup_page_less;
 hash_action_func sup_page_action;
 
 bool add_to_spt (struct file *, uint32_t, uint8_t *, bool, size_t, size_t);
-void free_spt_entry (void *);
 struct sup_page_entry *lookup_sup_page (void *vaddr);
 void spt_destroy (struct hash *);
 

@@ -59,7 +59,10 @@ process_execute (const char *file_name)
   file_name = strtok_r ((char *)file_name, " ", &save_ptr);
   file = filesys_open (file_name);
   if (file == NULL)
+   {
+    palloc_free_page (fn_copy);
     return TID_ERROR; 
+   }
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
@@ -191,6 +194,9 @@ process_exit (void)
    
   /* Destroy the supplementary page table */
    spt_destroy (&cur->sup_page_table);
+ 
+  /* Destroy the bitmap vmap */
+   bitmap_destroy (cur->vmap);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -404,6 +410,9 @@ load (const char *file_name, void (**eip) (void), void **esp,
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
+  /* save current esp */
+  thread_current ()->esp = *esp;
+
   success = true;
 
  done:
@@ -515,7 +524,7 @@ setup_stack (void **esp, const char *file_name, char **save_ptr)
   bool success = false;
   char *token;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO); 
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);

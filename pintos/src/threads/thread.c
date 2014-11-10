@@ -195,6 +195,8 @@ thread_create (const char *name, int priority,
   hash_init (&t->sup_page_table, sup_page_hash, sup_page_less, NULL);
   init_frame_table ();
   t->stack_bottom = DEFAULT_STACK_BOTTOM;
+  t->esp = NULL;
+  t->vmap = bitmap_create (BITMAP_SIZE);
 #endif
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);

@@ -59,6 +59,16 @@ syscall_handler (struct intr_frame *f)
       f->eax = wait ((pid_t)args[0]);
       break;
     
+   case SYS_MMAP:
+      get_arguments (sp, &args[0], 2);
+      f->eax = mmap (args[0], (void *)args[1]);
+      break;
+
+   case SYS_MUNMAP:
+      get_arguments (sp, &args[0], 1);
+      munmap (args[0]);
+      break;
+
    case SYS_WRITE:
       get_arguments (sp, &args[0], 3);
       f->eax = write (args[0], (void *)args[1], (unsigned)args[2]);
@@ -164,6 +174,7 @@ create (const char *file_name, unsigned size)
   lock_release (&filesys_lock);
   return return_value;
 }
+
 int
 open (const char *file)
 {
@@ -315,4 +326,15 @@ wait (pid_t pid)
   return process_wait((tid_t)pid);
 }
 
+mapid_t
+mmap (int fd, void *addr)
+{
+  if (fd < 2)
+    exit (-1);
+  return 0;
+}
 
+void
+munmap (mapid_t mapid)
+{
+}
