@@ -52,7 +52,7 @@ allocate_page_frame (struct sup_page_entry *spte)
     fte->spte = spte;
     hash_insert (&frame_table, &fte->elem);
 
-    if (spte && spte->location == ON_FILE)
+    if (spte && (spte->location == ON_FILE || spte->location == MMAP))
       {
     	fte->vaddr = spte->vaddr;
         spte->kvaddr = frame;
@@ -63,6 +63,10 @@ allocate_page_frame (struct sup_page_entry *spte)
             free (fte);
             return NULL;
           }
+         spte->is_loaded = true;
+	/* update the mapped_files list to reflect the changes */
+         if (spte->location == MMAP)
+           update_map_table (spte);
        }
    }
   else
@@ -125,6 +129,5 @@ load_from_file (struct sup_page_entry *spte, void *frame)
     {
       return false;
     }
-    spte->is_loaded = true;
     return true;
 }

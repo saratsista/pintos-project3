@@ -342,7 +342,7 @@ mmap (int fd, void *addr)
   uint32_t bytes_to_read = file_length (file);
   if (bytes_to_read == 0)
     exit (-1);
-  struct mmapped_page *mpage = calloc (1, sizeof (struct mmapped_page));
+  struct map_page *mpage = calloc (1, sizeof (struct map_page));
   mapid_t map_id = allocate_mapid ();
   uint32_t offset = 0;
   int read_bytes = 0, zero_bytes = 0;
@@ -353,7 +353,7 @@ mmap (int fd, void *addr)
     read_bytes = (bytes_to_read < PGSIZE)? bytes_to_read : PGSIZE;
     zero_bytes = PGSIZE - read_bytes;
 
-    spte = add_to_spt (file, offset, addr, true, read_bytes, zero_bytes);
+    spte = add_to_spt (file, offset, addr, true, read_bytes, zero_bytes, MMAP);
     if (!spte)
      {
        success = false;
@@ -361,7 +361,7 @@ mmap (int fd, void *addr)
      }	
     mpage->spte = spte;
     mpage->mapid = map_id;
-    list_push_back (&cur->mmapped_files, &mpage->map_elem);
+    list_push_back (&cur->mapped_files, &mpage->map_elem);
 
     bytes_to_read -= read_bytes;
     offset += read_bytes;
@@ -378,17 +378,17 @@ mmap (int fd, void *addr)
 void
 munmap (mapid_t mapid)
 {
-  struct list *map_list = &thread_current ()->mmapped_files;
-  struct mmapped_page *mpage;
+  struct list *map_list = &thread_current ()->mapped_files;
+  struct map_page *mpage;
   struct list_elem *e;
 
     while (!list_empty (map_list))
     {
      e = list_begin (map_list);
-      mpage = list_entry (e, struct mmapped_page, map_elem);
+      mpage = list_entry (e, struct map_page, map_elem);
       if (mpage->mapid == mapid)
        {
-        // sup_page_destroy (&mpage->spte->elem, NULL);
+         free_spt_entry (mpage->spte);
          list_remove (e);
          free (mpage);
        }

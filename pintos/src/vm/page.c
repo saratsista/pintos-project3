@@ -49,7 +49,7 @@ sup_page_destroy (struct hash_elem *h, void *aux UNUSED)
 
 struct sup_page_entry *
 add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
-		  size_t page_read_bytes, size_t page_zero_bytes)
+		  size_t page_read_bytes, size_t page_zero_bytes, enum data_location location)
 {
   struct thread *cur = thread_current ();
   struct sup_page_entry *spte = malloc (sizeof (struct sup_page_entry));
@@ -58,7 +58,7 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   if (spte == NULL)
     return false;
 
-  spte->location = ON_FILE;
+  spte->location = location;
   spte->vaddr = upage;
   spte->kvaddr = NULL;
   spte->file = file;
@@ -72,10 +72,7 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   h = hash_insert (&cur->sup_page_table, &spte->elem);
 
   if ( h != NULL)
-   {
-     free (spte);
      return NULL;
-   }
   return spte;
 }
 
@@ -92,9 +89,44 @@ lookup_sup_page (void *vaddr)
   return (h == NULL? NULL: hash_entry (h, struct sup_page_entry, elem));
 }
 
+void
+free_spt_entry (struct sup_page_entry *spte)
+{
+  struct thread *cur = thread_current ();
+  if (spte && spte->is_loaded)
+   {
+     hash_delete (&cur->sup_page_table, &spte->elem);
+     free_page_frame (spte->kvaddr);
+     pagedir_clear_page (cur->pagedir, spte->vaddr);
+     free (spte);
+   }
+}
+
 /* Destroy the sup_page_table */
 void
 spt_destroy (struct hash *spt)
 {
   hash_destroy (spt, sup_page_destroy);
+}
+
+/* Update the mmapped_files table */
+void
+update_map_table (struct sup_page_entry *spte)
+{
+  struct thread *cur = thread_current ();
+  struct list *map_list = &cur->mapped_files;
+  struct map_page *mpage;
+  struct list_elem *e;
+
+  for (e = list_begin (map_list); e != list_end (map_list);
+       e = list_next (e))
+    {
+      mpage = list_entry (e, struct map_page, map_elem);
+      if (mpage->spte->vaddr == spte->vaddr)
+        {
+          mpage->spte = spte;
+          list_remove (e);
+          break;
+        }
+     }
 }

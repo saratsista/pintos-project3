@@ -500,7 +500,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
      if (!add_to_spt (file, ofs, upage, writable, page_read_bytes,
-          page_zero_bytes))
+          page_zero_bytes, ON_FILE))
         return false; 
       /* Increment the offset into the file */
       ofs += (uint32_t)PGSIZE;

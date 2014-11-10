@@ -114,7 +114,7 @@ struct thread
     void *stack_bottom;			/* current stack bottom */
     void *esp;				/* stack pointer at transition from
 					   user mode to kernel mode*/
-    struct list mmapped_files;		/* list for all mmaped files */
+    struct list mapped_files;		/* list for all mmaped files */
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

@@ -200,7 +200,6 @@ thread_create (const char *name, int priority,
   init_frame_table ();
   t->stack_bottom = DEFAULT_STACK_BOTTOM;
   t->esp = NULL;
-  list_init (&t->mmapped_files);
 #endif
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -484,6 +483,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_init (&t->child_meta_list);
+#ifdef VM
+  list_init (&t->mapped_files);
+#endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

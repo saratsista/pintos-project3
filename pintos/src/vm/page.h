@@ -13,7 +13,7 @@ enum data_location
   {
     ON_FILE,
     ON_SWAP,
-    ON_DISK
+    MMAP
   };
 
 /* Page table entry for Supplementary Page Table.
@@ -42,7 +42,7 @@ struct sup_page_entry
 };
 
 /* A list for mmapped pages. This is a per-process DS */
-struct mmapped_page
+struct map_page
 {
   struct sup_page_entry *spte;	// The spt entry for the mapped page
   mapid_t mapid;		// the mapid for this page. 
@@ -57,8 +57,10 @@ hash_less_func sup_page_less;
 /* function which deletes each element in sup_page_table */
 hash_action_func sup_page_destroy;
 
-struct sup_page_entry *add_to_spt (struct file *, uint32_t, uint8_t *, bool, size_t, size_t);
+struct sup_page_entry *add_to_spt (struct file *, uint32_t, uint8_t *, bool, size_t, size_t, enum data_location);
 struct sup_page_entry *lookup_sup_page (void *vaddr);
+void free_spt_entry (struct sup_page_entry *);
 void spt_destroy (struct hash *);
+void update_map_table (struct sup_page_entry *);
 
 #endif /* vm/page.h */
