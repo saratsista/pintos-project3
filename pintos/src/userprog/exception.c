@@ -11,9 +11,6 @@
 #include "vm/frame.h"
 #include "vm/page.h"
 
-#define STACK_LIMIT 8*1024*1024
-#define MAX_STACK_ADDR (PHYS_BASE - STACK_LIMIT)
-
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 

@@ -128,5 +128,5 @@ update_map_table (struct sup_page_entry *spte)
           list_remove (e);
           break;
         }
-     }
+    }
 }

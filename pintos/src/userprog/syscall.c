@@ -332,12 +332,18 @@ wait (pid_t pid)
 mapid_t
 mmap (int fd, void *addr)
 {
-  if (fd < 2 || addr == 0 || lookup_sup_page (addr) ||
-      (uint32_t)addr % PGSIZE != 0)
-    exit (-1);
-
-  struct sup_page_entry *spte;
   struct thread *cur = thread_current ();
+
+  if (addr == NULL || fd < 2)
+    return -1; 
+  if(lookup_sup_page (addr))
+    return -1;
+  if ((uint32_t) addr % PGSIZE != 0)
+    return -1;
+  if (addr > MAX_STACK_ADDR)
+    return -1;
+ 
+  struct sup_page_entry *spte;
   struct file *file = file_reopen (cur->fd[fd]);
   uint32_t bytes_to_read = file_length (file);
   if (bytes_to_read == 0)
