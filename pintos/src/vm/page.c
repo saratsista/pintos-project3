@@ -68,6 +68,7 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   spte->read_bytes = page_read_bytes; 
   spte->zero_bytes = page_zero_bytes;
   spte->is_loaded = false;
+  spte->mapid = -1;
   
   h = hash_insert (&cur->sup_page_table, &spte->elem);
 
@@ -93,11 +94,14 @@ void
 free_spt_entry (struct sup_page_entry *spte)
 {
   struct thread *cur = thread_current ();
-  if (spte && spte->is_loaded)
+  if (spte)
    {
      hash_delete (&cur->sup_page_table, &spte->elem);
-     free_page_frame (spte->kvaddr);
-     pagedir_clear_page (cur->pagedir, spte->vaddr);
+     if (spte->kvaddr)
+      {
+        free_page_frame (spte->kvaddr);
+        pagedir_clear_page (cur->pagedir, spte->vaddr);
+      }
      free (spte);
    }
 }
@@ -115,7 +119,7 @@ update_map_table (struct sup_page_entry *spte)
 {
   struct thread *cur = thread_current ();
   struct list *map_list = &cur->mapped_files;
-  struct map_page *mpage;
+  struct map_page *mpage; 
   struct list_elem *e;
 
   for (e = list_begin (map_list); e != list_end (map_list);
@@ -129,4 +133,5 @@ update_map_table (struct sup_page_entry *spte)
           break;
         }
     }
+
 }

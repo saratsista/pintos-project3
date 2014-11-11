@@ -66,7 +66,7 @@ allocate_page_frame (struct sup_page_entry *spte)
          spte->is_loaded = true;
 	/* update the mapped_files list to reflect the changes */
          if (spte->location == MMAP)
-           update_map_table (spte);
+            update_map_table (spte);
        }
    }
   else

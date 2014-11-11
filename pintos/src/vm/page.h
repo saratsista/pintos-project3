@@ -31,6 +31,7 @@ struct sup_page_entry
   size_t read_bytes;
   size_t zero_bytes;
   bool is_loaded;
+  mapid_t mapid;
   struct hash_elem elem;  
   /*
   1. Info for eviction policy
@@ -48,9 +49,6 @@ struct map_page
   mapid_t mapid;		// the mapid for this page. 
   struct list_elem map_elem;
 };
-
-/* A lock for allocating mapid */
-struct lock mapid_lock;
 
 hash_hash_func sup_page_hash;
 hash_less_func sup_page_less;

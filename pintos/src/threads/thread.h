@@ -115,6 +115,7 @@ struct thread
     void *esp;				/* stack pointer at transition from
 					   user mode to kernel mode*/
     struct list mapped_files;		/* list for all mmaped files */
+    uint32_t mapid;
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

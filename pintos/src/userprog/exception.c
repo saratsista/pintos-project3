@@ -156,7 +156,6 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
   bool success = true;
-  struct thread *cur = thread_current ();
 
 //  printf (">>> fault_addr = %p\n", fault_addr); 
   if (not_present && is_user_vaddr (fault_addr) &&

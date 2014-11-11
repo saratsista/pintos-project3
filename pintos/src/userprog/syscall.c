@@ -24,7 +24,6 @@
 static void syscall_handler (struct intr_frame *);
 void validate_pointer (void *ptr);
 void get_arguments (int *esp, int *args, int count);
-static allocate_mapid (void);
 
 void
 syscall_init (void) 
@@ -150,9 +149,6 @@ validate_pointer (void *ptr)
 void
 exit (int status)
 {
- /* XXX: TODO
-    If the current thread exits, then it should be removed from its
-    parent's child list. */
   struct thread *cur = thread_current ();
 
   /* set exit_status in struct child_metadata */
@@ -348,12 +344,12 @@ mmap (int fd, void *addr)
   uint32_t bytes_to_read = file_length (file);
   if (bytes_to_read == 0)
     exit (-1);
-  struct map_page *mpage = calloc (1, sizeof (struct map_page));
-  mapid_t map_id = allocate_mapid ();
+  struct map_page *mpage = malloc (sizeof (struct map_page));
   uint32_t offset = 0;
   int read_bytes = 0, zero_bytes = 0;
   bool success = true;
 
+  cur->mapid++;
   while (offset < bytes_to_read)
    {
     read_bytes = (bytes_to_read < PGSIZE)? bytes_to_read : PGSIZE;
@@ -365,8 +361,10 @@ mmap (int fd, void *addr)
        success = false;
        break;
      }	
+        
+    spte->mapid = cur->mapid;
     mpage->spte = spte;
-    mpage->mapid = map_id;
+    mpage->mapid = &cur->mapid;
     list_push_back (&cur->mapped_files, &mpage->map_elem);
 
     bytes_to_read -= read_bytes;
@@ -376,7 +374,7 @@ mmap (int fd, void *addr)
 
   file_close (file);
   if (success)
-    return map_id; 
+    return (mapid_t)cur->mapid; 
   else
     return -1;
 }
@@ -390,26 +388,15 @@ munmap (mapid_t mapid)
 
     while (!list_empty (map_list))
     {
-     e = list_begin (map_list);
+      e = list_begin (map_list);
       mpage = list_entry (e, struct map_page, map_elem);
-      if (mpage->mapid == mapid)
+
+      if (mpage->spte->mapid == mapid)
        {
          free_spt_entry (mpage->spte);
          list_remove (e);
          free (mpage);
        }
+      e = list_next (e);
     }
-}
-
-static mapid_t
-allocate_mapid (void)
-{
-  static mapid_t next_mapid = 1;
-  mapid_t mapid;
-
-  lock_acquire (&mapid_lock);
-  mapid = next_mapid++;
-  lock_release (&mapid_lock);
-
-  return mapid;
 }

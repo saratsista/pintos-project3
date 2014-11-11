@@ -97,9 +97,6 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-#if VM
-  lock_init (&mapid_lock);
-#endif
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -485,6 +482,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->child_meta_list);
 #ifdef VM
   list_init (&t->mapped_files);
+  t->mapid = 0;
 #endif
 
   old_level = intr_disable ();
