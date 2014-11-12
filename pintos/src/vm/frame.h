@@ -24,6 +24,15 @@ struct frame_table_entry
   struct hash_elem elem;
 };
 
+/* LRU cache for eviction */
+struct list lru_cache;
+
+struct lru_entry
+{
+  void *kvaddr;
+  struct list_elem lruelem;
+};
+
 /* Initialize the frame_table */
 bool init_frame_table (void);
 
@@ -45,5 +54,11 @@ void free_page_frame (void *kvaddr);
 
 /*Function to lookup a page frame with VAADR as its key */
 struct frame_table_entry *lookup_page_frame (void *kpage);
+
+/* Function for frame eviction */
+bool evict_page_frame (void);
+
+/* Move the element in lru_cache to front */
+void lru_move_to_front (void *);
 
 #endif /* vm/frame.h */

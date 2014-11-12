@@ -33,6 +33,8 @@ struct sup_page_entry
   bool is_loaded;
   mapid_t mapid;
   struct hash_elem elem;  
+  bool on_swap;			// Is the page on swap?
+  size_t swap_index;		// index in swap_table
   /*
   1. Info for eviction policy
   2. Mapping from swap pages to disk

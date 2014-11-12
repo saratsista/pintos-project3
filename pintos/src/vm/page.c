@@ -69,6 +69,7 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   spte->zero_bytes = page_zero_bytes;
   spte->is_loaded = false;
   spte->mapid = -1;
+  spte->on_swap = false;
   
   h = hash_insert (&cur->sup_page_table, &spte->elem);
 
@@ -81,13 +82,22 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
 struct sup_page_entry *
 lookup_sup_page (void *vaddr)
 {
-  struct sup_page_entry spte; 
+  struct sup_page_entry spte, *pspte; 
   struct hash_elem *h;
   struct thread *cur = thread_current ();
 
   spte.vaddr = pg_round_down (vaddr);
   h = hash_find (&cur->sup_page_table, &spte.elem);
-  return (h == NULL? NULL: hash_entry (h, struct sup_page_entry, elem));
+  if (h != NULL)
+   {
+     pspte = hash_entry (h, struct sup_page_entry, elem); 
+     /* If a page frame is already allocated, move it to front
+        in the LRU cache */ 
+     if (pspte->is_loaded)
+     	lru_move_to_front (pspte->kvaddr);
+     return pspte;
+   }
+   return NULL;
 }
 
 void
@@ -133,5 +143,4 @@ update_map_table (struct sup_page_entry *spte)
           break;
         }
     }
-
 }
