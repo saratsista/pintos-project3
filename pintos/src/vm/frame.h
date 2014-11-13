@@ -21,6 +21,7 @@ struct frame_table_entry
   void *kvaddr;		 /* Kernel virtual address for vaddr */
   struct thread *t;	 /* Thread this frame belongs to */
   struct sup_page_entry *spte; /* Corresponding page table entry */
+  bool is_pinned;
   struct hash_elem elem;
 };
 
@@ -46,6 +47,9 @@ hash_less_func frame_less_func;
    mapping in the frame_table */
 void *allocate_page_frame (struct sup_page_entry *);
 
+/* Add page frame to frame_table*/
+bool add_frame_to_ft (void *frame, struct sup_page_entry *);
+
 bool
 install_page_frame (void *uaddr, void *frame, bool writable);
 
@@ -60,5 +64,8 @@ bool evict_page_frame (void);
 
 /* Move the element in lru_cache to front */
 void lru_move_to_front (void *);
+
+/*Load from swap */
+void load_from_swap (struct frame_table_entry *);
 
 #endif /* vm/frame.h */

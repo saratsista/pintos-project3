@@ -17,8 +17,6 @@ init_swap_table ()
 
   if (!swap_table)
      return;
-
-  lock_init (&swap_lock);
 }
 
 /* Returns the block sector number for the allocated swap slot.

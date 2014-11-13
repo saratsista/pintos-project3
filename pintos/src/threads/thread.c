@@ -100,6 +100,7 @@ thread_init (void)
   list_init (&all_list);
 #ifdef VM
   list_init (&lru_cache);
+  lock_init (&swap_lock);
 #endif
 
   /* Set up a thread structure for the running thread. */

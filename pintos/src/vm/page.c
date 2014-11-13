@@ -104,12 +104,17 @@ void
 free_spt_entry (struct sup_page_entry *spte)
 {
   struct thread *cur = thread_current ();
+  struct hash_elem *h;
+  struct frame_table_entry *fte;
+  fte = hash_entry (h, struct frame_table_entry, elem);
+
   if (spte)
    {
-     hash_delete (&cur->sup_page_table, &spte->elem);
+     h = hash_delete (&cur->sup_page_table, &spte->elem);
      if (spte->kvaddr)
       {
         free_page_frame (spte->kvaddr);
+        free (fte);
         pagedir_clear_page (cur->pagedir, spte->vaddr);
       }
      free (spte);

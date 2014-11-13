@@ -344,7 +344,6 @@ mmap (int fd, void *addr)
   uint32_t bytes_to_read = file_length (file);
   if (bytes_to_read == 0)
     exit (-1);
-  struct map_page *mpage = malloc (sizeof (struct map_page));
   uint32_t offset = 0;
   int read_bytes = 0, zero_bytes = 0;
   bool success = true;
@@ -352,6 +351,7 @@ mmap (int fd, void *addr)
   cur->mapid++;
   while (offset < bytes_to_read)
    {
+    struct map_page *mpage = malloc (sizeof (struct map_page));
     read_bytes = (bytes_to_read < PGSIZE)? bytes_to_read : PGSIZE;
     zero_bytes = PGSIZE - read_bytes;
 
@@ -361,7 +361,7 @@ mmap (int fd, void *addr)
        success = false;
        break;
      }	
-        
+
     spte->mapid = cur->mapid;
     mpage->spte = spte;
     mpage->mapid = &cur->mapid;
@@ -382,18 +382,28 @@ mmap (int fd, void *addr)
 void
 munmap (mapid_t mapid)
 {
-  struct list *map_list = &thread_current ()->mapped_files;
+  struct thread *cur = thread_current ();
+  struct list *map_list = &cur->mapped_files;
   struct map_page *mpage;
+  struct sup_page_entry *spte;
   struct list_elem *e;
 
     while (!list_empty (map_list))
     {
       e = list_begin (map_list);
       mpage = list_entry (e, struct map_page, map_elem);
+      spte = mpage->spte;
 
       if (mpage->spte->mapid == mapid)
        {
-         free_spt_entry (mpage->spte);
+         if (pagedir_is_dirty (cur->pagedir, mpage->spte->vaddr))
+          {
+            lock_acquire (&filesys_lock);
+            file_write_at (mpage->spte->file, mpage->spte->vaddr,
+                           PGSIZE, mpage->spte->file_off);
+            lock_release (&filesys_lock);
+          }
+         free_spt_entry (spte);
          list_remove (e);
          free (mpage);
        }

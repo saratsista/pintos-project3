@@ -5,6 +5,7 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/malloc.h"
+#include "threads/malloc.h"
 #include "userprog/syscall.h"
 #include "userprog/pagedir.h"
 
@@ -42,17 +43,42 @@ load_from_file (struct sup_page_entry *spte, void *kpage);
 void *
 allocate_page_frame (struct sup_page_entry *spte)
 {
-  struct frame_table_entry *fte = calloc (1, sizeof (struct frame_table_entry));
 
   /* Get a page of memory from user_pool */
   void *frame =  palloc_get_page (PAL_USER | PAL_ZERO);
   lock_acquire (&ft_lock);
   if (frame)
   {
+    if (!add_frame_to_ft (frame, spte))
+      return NULL;
+  }
+  else
+   {
+      bool success;
+      while ((success = evict_page_frame ()) != true)
+	{ 
+          lock_release (&ft_lock);
+        }
+      if (!success)
+          PANIC ("No Swap space available!");
+      /* allocate new frame */
+      frame = palloc_get_page (PAL_USER | PAL_ZERO);
+      if (!add_frame_to_ft (frame, spte))
+        return NULL;
+   }
+  lock_release (&ft_lock);
+  return frame;
+}
+
+bool
+add_frame_to_ft (void *frame, struct sup_page_entry *spte)
+{
+  struct frame_table_entry *fte = calloc (1, sizeof (struct frame_table_entry));
     /* Insert an fte into the frame_table */
     fte->kvaddr = frame; 
     fte->spte = spte;
     fte->t = thread_current ();
+    fte->is_pinned = true;
     hash_insert (&frame_table, &fte->elem);
 
     /* Insert the corresponding element in LRU Cache */
@@ -60,48 +86,56 @@ allocate_page_frame (struct sup_page_entry *spte)
     l->kvaddr = frame;
     list_push_front (&lru_cache, &l->lruelem);
 
+    if (spte)
+     {
+       fte->vaddr = spte->vaddr;
+       spte->kvaddr = frame;
+     }
+
     /* Load from the file */
     if (spte && (spte->location == ON_FILE || spte->location == MMAP))
       {
-    	fte->vaddr = spte->vaddr;
-        spte->kvaddr = frame;
 	if (!load_from_file (spte, fte->kvaddr))
           {
             lock_release (&ft_lock);
             free_page_frame (frame);
             free (fte);
-            return NULL;
+            return false;
           }
          spte->is_loaded = true;
 	/* update the mapped_files list to reflect the changes */
          if (spte->location == MMAP)
             update_map_table (spte);
        }
-   }
-  else
-   {
-      if (!evict_page_frame ())
-	{ 
-          lock_release (&ft_lock);
-          PANIC ("No Swap space available!");
-        }
-      frame = palloc_get_page (PAL_USER | PAL_ZERO);
-   }
-  lock_release (&ft_lock);
-  return frame;
+     if (spte && spte->location == ON_SWAP)
+       {
+         load_from_swap (fte);
+       }
+  return true;
 }
 
 void 
 free_page_frame (void *kvaddr)
 {
-  struct frame_table_entry fte;
+  struct frame_table_entry *pfte;
   struct list_elem *e;
   struct lru_entry *l;
+  struct hash_elem *h;
   
-  lock_acquire (&ft_lock);
-  fte.kvaddr = kvaddr;
-  hash_delete (&frame_table, &fte.elem); 
+  if (kvaddr == NULL)
+    return;
+
+  if (!lock_held_by_current_thread (&ft_lock))
+     lock_acquire (&ft_lock);
+  pfte = lookup_page_frame (kvaddr);
+
+  h = hash_delete (&frame_table, &pfte->elem); 
+
+  /*free the frame */
+  pagedir_set_dirty (thread_current ()->pagedir, pfte->vaddr, false);
+  pagedir_set_accessed (thread_current()->pagedir, pfte->vaddr, false);
   palloc_free_page (kvaddr);
+
   /* Remove the element from cache */
   for (e = list_begin (&lru_cache); e != list_end (&lru_cache);
        e = list_next (e))
@@ -113,8 +147,9 @@ free_page_frame (void *kvaddr)
          free (l);
          break;
        }
-    }
-  lock_release (&ft_lock);
+   }
+  if (!lock_held_by_current_thread (&ft_lock))
+     lock_release (&ft_lock);
 }
 
 struct frame_table_entry *
@@ -163,6 +198,15 @@ load_from_file (struct sup_page_entry *spte, void *frame)
 }
 
 void
+load_from_swap (struct frame_table_entry *fte)
+{
+  read_from_swap (fte->spte->swap_index, fte->kvaddr);
+  fte->spte->on_swap = false;
+  fte->spte->is_loaded = true;
+  fte->spte->swap_index = -1;
+}
+
+void
 lru_move_to_front (void *kvaddr)
 {
   struct lru_entry *l;
@@ -185,19 +229,29 @@ lru_move_to_front (void *kvaddr)
 }
 
 bool
-evict_page_frame ()
+evict_page_frame (void)
 {
   struct list_elem *e = list_pop_back (&lru_cache);
   struct lru_entry *le = list_entry (e, struct lru_entry, lruelem);
   struct frame_table_entry *fte = lookup_page_frame (le->kvaddr);
+  struct thread *cur = thread_current ();
   struct sup_page_entry *pspte, spte;
   struct hash_elem *h;
 
-  fte->spte->on_swap = true;
+  if (!fte)
+    return false;
+
+  if (!pagedir_is_dirty (cur->pagedir, fte->vaddr))
+     {
+       free_page_frame (fte->kvaddr);
+       free (fte);
+       free (le);
+       return true;
+     }
+    
   /* write the frame to the swap */
   size_t swap_idx = write_to_swap (le->kvaddr);
   
-  printf (">>> swap_index = %d\n", swap_idx);
  /* Indicate the thread which holds this page that it is being
      swapped out */
   spte.vaddr = fte->vaddr;
@@ -206,9 +260,17 @@ evict_page_frame ()
   if (h != NULL)
    {
      pspte = hash_entry (h, struct sup_page_entry, elem);
+     pspte->location = ON_SWAP;
      pspte->on_swap = true; 
      pspte->swap_index = swap_idx; 
+     pspte->is_loaded = false;
+     pspte->kvaddr = NULL;
+     free_page_frame (le->kvaddr);
+     pagedir_clear_page (fte->t->pagedir, pspte->vaddr);
+     free (fte);
+     free (le);
+     return true;
    }
-  return true;
+  return false;
 }
 

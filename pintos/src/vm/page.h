@@ -35,13 +35,6 @@ struct sup_page_entry
   struct hash_elem elem;  
   bool on_swap;			// Is the page on swap?
   size_t swap_index;		// index in swap_table
-  /*
-  1. Info for eviction policy
-  2. Mapping from swap pages to disk
-  3. locations of memory mapped files
-  5. How to get the swap disk and which sector of swap disk? 
-  6. The list of alias_frames can be avoided. See pintos docs.
- */
 };
 
 /* A list for mmapped pages. This is a per-process DS */

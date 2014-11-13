@@ -164,20 +164,18 @@ page_fault (struct intr_frame *f)
       struct sup_page_entry *spte = lookup_sup_page (fault_addr);
       if (!spte)
        {
-	  /* Illegal stack access? exit with -1*/
-	  if ((fault_addr < MAX_STACK_ADDR)
-              || (f->esp - fault_addr == PGSIZE))
-		   //&& fault_addr > cur->stack_bottom)
-	      {
-		success = false;
-	      }	
-	  else 
+	  if (fault_addr >= f->esp - 32)
 	   {
 	     /* Else, grow stack */		
   	     if (!grow_stack (fault_addr))
                success = false;
+               goto done;
 	   }
-	   goto done;
+          else
+            {
+               success = false;
+               goto done;
+            }
        }
        else if (spte->is_loaded) 
         {
@@ -215,6 +213,12 @@ page_fault (struct intr_frame *f)
 bool
 grow_stack (void *fault_addr)
 {
+  /* Illegal stack access? exit with -1*/
+  if ((fault_addr < MAX_STACK_ADDR))
+  //  || (f->esp - fault_addr == PGSIZE))
+   {
+     return false;
+   }	
   struct thread *cur = thread_current ();
   void *stack_page = allocate_page_frame (NULL);
   if (stack_page != NULL) 
