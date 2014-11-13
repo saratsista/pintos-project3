@@ -362,9 +362,8 @@ mmap (int fd, void *addr)
        break;
      }	
 
-    spte->mapid = cur->mapid;
     mpage->spte = spte;
-    mpage->mapid = &cur->mapid;
+    mpage->mapid = cur->mapid;
     list_push_back (&cur->mapped_files, &mpage->map_elem);
 
     bytes_to_read -= read_bytes;
@@ -394,7 +393,7 @@ munmap (mapid_t mapid)
       mpage = list_entry (e, struct map_page, map_elem);
       spte = mpage->spte;
 
-      if (mpage->spte->mapid == mapid)
+      if (mpage->mapid == mapid)
        {
          if (pagedir_is_dirty (cur->pagedir, mpage->spte->vaddr))
           {

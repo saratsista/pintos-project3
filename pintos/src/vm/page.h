@@ -31,7 +31,6 @@ struct sup_page_entry
   size_t read_bytes;
   size_t zero_bytes;
   bool is_loaded;
-  mapid_t mapid;
   struct hash_elem elem;  
   bool on_swap;			// Is the page on swap?
   size_t swap_index;		// index in swap_table

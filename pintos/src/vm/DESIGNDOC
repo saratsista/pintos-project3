@@ -8,9 +8,9 @@ S 140		|
 
 >> Fill in the names and email addresses of your group members.
 
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
-FirstName LastName <email@domain.example>
+Kishore Sridhar    <kish@ccs.neu.edu>
+Nirupa Narayanappa <nirupa13@ccs.neu.edu> 
+Sarat Chandra Sista <ssaratc@ccs.neu.edu>
 
 ---- PRELIMINARIES ----
 
@@ -29,6 +29,69 @@ FirstName LastName <email@domain.example>
 >> A1: Copy here the declaration of each new or changed `struct' or
 >> `struct' member, global or static variable, `typedef', or
 >> enumeration.  Identify the purpose of each in 25 words or less.
+
+---- Structures in vm/page.h ----
+
+/* Frame Table: Frame table is a global data structure and 
+   is common for all processes.*/
+struct hash frame_table;
+
+struct lock ft_lock;	/* Lock for the frame_table */
+
+/* Enum describing the possible locations where required data
+   might be present */
+enum data_location
+  {
+    ON_FILE,	/* Is data present on a file? */	
+    ON_SWAP,    /* Is data on swap disk? */
+    MMAP	/* Is data mmapped? */
+  };
+
+
+/* Page table entry for Supplementary Page Table.
+   The supplementary page table must be a per-process 
+   data structure. */
+struct sup_page_entry
+{
+  enum data_location location;	// Location where data is present
+  void *vaddr;			// User virtual address for the faulted page
+  void *kvaddr;			// kernel virtual address for VADDR
+  struct file *file;		// The file having the required data, if any
+  struct inode *inode;		// Inode for the file
+  uint32_t file_off;		// The offset into the file where data starts
+  bool writable;		// Is the page writable?
+  size_t read_bytes;		// Number of read_bytes in this page
+  size_t zero_bytes;		// Number of zero_bytes in this page
+  bool is_loaded;		// Is the page loaded on the physical memory?
+  struct hash_elem elem;  
+  bool on_swap;			// Is the page on swap?
+  size_t swap_index;		// index in swap_table
+};
+
+--- Structures in vm/frame.h ---
+
+/* Structure for each entry in the Frame Table
+   The key is the kernel virtual address KVADDR */
+struct frame_table_entry
+{
+  void *vaddr;		  	/* User virtual address */
+  void *kvaddr;		 	/* Kernel virtual address for vaddr */
+  struct thread *t;	 	/* Thread this frame belongs to */
+  struct sup_page_entry *spte; 	/* Corresponding page table entry */
+  bool is_pinned;
+  struct hash_elem elem;
+};
+
+--- Additions to struct thread in threads/thread.h ----
+
+
+ struct hash sup_page_table;	/* Supplementary Page Table */
+ void *stack_bottom;		/* current stack bottom */
+ void *esp;			/* stack pointer at transition from
+				   user mode to kernel mode*/
+ struct list mapped_files;	/* list for all mmaped files */
+ uint32_t mapid;		/* Current running mapid_t */
+
 
 ---- ALGORITHMS ----
 

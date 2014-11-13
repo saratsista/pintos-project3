@@ -68,7 +68,6 @@ add_to_spt (struct file *file, uint32_t off, uint8_t *upage, bool writable,
   spte->read_bytes = page_read_bytes; 
   spte->zero_bytes = page_zero_bytes;
   spte->is_loaded = false;
-  spte->mapid = -1;
   spte->on_swap = false;
   
   h = hash_insert (&cur->sup_page_table, &spte->elem);
