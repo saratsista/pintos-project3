@@ -183,8 +183,6 @@ page_fault (struct intr_frame *f)
           /* Write to a read-only page? */
           if (!spte->writable && write)
 	     success = false;
-          if (spte->on_swap)
-             read_from_swap (spte->swap_index, spte->kvaddr);
 	  goto done;
         }
        else
